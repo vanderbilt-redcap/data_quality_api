@@ -1,0 +1,23 @@
+{
+	"name": "Data Quality API",
+
+	"namespace": "Vanderbilt\\DataQualityExternalModule",
+
+	"description": "Turns on the Data Quality API endpoints.",
+
+    "authors": [
+        {
+            "name": "Kyle McGuffin",
+            "email": "datacore@vanderbilt.edu",
+			"institution": "Vanderbilt University Medical Center"
+        }
+    ],
+	
+	"permissions": [
+	],
+
+	"no-auth-pages":["import","export"],
+
+	"project-settings": [
+	]
+}
