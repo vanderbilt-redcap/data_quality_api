@@ -23,7 +23,7 @@ $data = array(
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, 'http://localhost/api/?prefix=[prefix]&page=export&pid=[pid]&type=module&NOAUTH');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 curl_setopt($ch, CURLOPT_VERBOSE, 0);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 curl_setopt($ch, CURLOPT_AUTOREFERER, true);
