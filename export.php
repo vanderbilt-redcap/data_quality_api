@@ -23,12 +23,31 @@ if($post['record'] != "") {
 	}
 }
 
-## Get list of status IDs associated with this project/record(s)
-$sql = "SELECT s.*
-		FROM redcap_data_quality_status s
-		WHERE s.project_id = ".$project_id.$recordSql;
+# Add SQL to filter results by a single user
+$userSql = "";
+if($post['user'] != "") {
+	$user_id = User::getUIIDByUsername($post['user']);
+	if(!empty($user_id) && is_numeric($user_id)) {
+		$userSql = " AND s.assigned_user_id = '" . db_escape($user_id) . "'";
+	}
+}
 
-$q = db_query($sql);
+# Add SQL to filter results by a single status
+$statusSql = "";
+if($post['status'] != "") {
+	if($post['status'] == "OPEN") {
+		$statusSql = " AND (s.query_status = '" . db_escape($post['status']) . "' OR s.query_status IS NULL) ";
+	} else {
+		$statusSql = " AND s.query_status = '" . db_escape($post['status']) . "'";
+	}
+}
+
+## Get list of status IDs associated with this project/record(s)
+$sql1 = "SELECT s.*
+		FROM redcap_data_quality_status s
+		WHERE s.project_id = ".$project_id.$recordSql.$userSql.$statusSql;
+
+$q = db_query($sql1);
 
 if($e = db_error()) {
 	throw new Exception("Database error while pulling data quality status");
@@ -77,6 +96,15 @@ if(count($statusList) > 0) {
 	}
 }
 
+// $uid = User::getUIIDByUsername($post['user']);
+
+// $retData = array(
+// 	'uid' => $uid,
+// 	'user' => $post['user'],
+// 	'sql' => $sql
+// );
+
+// $content = json_encode($sql1);
 $content = json_encode($statusList);
 
 # Send the response to the requestor
