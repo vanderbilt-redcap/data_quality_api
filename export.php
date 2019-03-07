@@ -43,9 +43,24 @@ if($post['status'] != "") {
 }
 
 ## Get list of status IDs associated with this project/record(s)
-$sql1 = "SELECT s.*
-		FROM redcap_data_quality_status s
-		WHERE s.project_id = ".$project_id.$recordSql.$userSql.$statusSql;
+$sql1 = "
+	SELECT s.*, g.value as group_id
+	FROM redcap_data_quality_status s
+	
+	-- join to metadata to exclude fields that no longer exist (like REDCap does programmatically)
+	JOIN redcap_metadata m
+		ON m.project_id = $project_id
+		AND s.field_name = m.field_name
+			
+	-- this joins one row per event & instance, requiring the GROUP BY below
+	LEFT JOIN redcap_data g
+		ON s.record = g.record
+		AND g.project_id = $project_id
+		AND g.field_name = '__GROUPID__'
+		
+	WHERE s.project_id = ".$project_id.$recordSql.$userSql.$statusSql."
+	GROUP BY status_id
+";
 
 $q = db_query($sql1);
 
