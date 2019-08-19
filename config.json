@@ -3,7 +3,7 @@
 
 	"namespace": "Vanderbilt\\DataQualityExternalModule",
 
-	"description": "Turns on the Data Quality API endpoints.",
+	"description": "Adds Data Quality API endpoints.  <b>Disclaimer:</b> This module only supports API import/export through JSON format and only supports limited access to Data Quality functionality. See the README for instructions on usage of the API functionality enabled by this module.",
 
     "authors": [
         {
