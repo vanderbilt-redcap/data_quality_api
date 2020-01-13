@@ -28,7 +28,6 @@ $resolutionInsertIds = [];
 $userIdConversion = array(NULL => NULL);
 
 $projectSettings = $Proj->project;
-
 $dataQualityProcess = false;
 $dataCommentProcess = false;
 $editComments = false;
@@ -70,7 +69,12 @@ foreach($importData as $dataRow) {
 	$eventFound = false;
 	foreach($Proj->events as $armDetails) {
 		foreach($armDetails["events"] as $tempEventId => $eventDetails) {
-			if($eventId == $tempEventId) {
+			// check for non-longitudinal project
+			if (count($armDetails['events']) == 1 && $projectSettings['repeatforms']==0){
+				$eventId = $tempEventId;
+				$eventFound = true;
+				break 2;
+			}else if($eventId == $tempEventId) {
 				$eventFound = true;
 				break 2;
 			}
