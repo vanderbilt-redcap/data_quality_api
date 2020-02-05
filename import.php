@@ -47,6 +47,11 @@ if($projectSettings['field_comment_edit_delete'] == 1) {
 	$editComments = true;
 }
 
+$single_event = false;
+if(sizeof($Proj->events)==1 && $projectSettings['repeatforms']==0){
+	$single_event = true;
+}
+
 ## TODO Convert flat/csv data into nested array format
 $importData = json_decode($post['data'],true);
 
@@ -70,7 +75,7 @@ foreach($importData as $dataRow) {
 	foreach($Proj->events as $armDetails) {
 		foreach($armDetails["events"] as $tempEventId => $eventDetails) {
 			// check for non-longitudinal project
-			if (count($armDetails['events']) == 1 && $projectSettings['repeatforms']==0){
+			if (count($armDetails['events']) == 1 && $single_event){
 				$eventId = $tempEventId;
 				$eventFound = true;
 				break 2;
