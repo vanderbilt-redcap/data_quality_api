@@ -308,7 +308,7 @@ else
 	// header("Location: " . $dataQualityExternalModule->getUrl("index.php") . "&imported=1");
 	require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
 	print "<div class='green' style='margin:20px 0;'>";
-	print "<p>SUCCESS:$content</p>";
+	print "<p>RES IDS MODIFIED:$content</p>";
 	print "</div>";
 	require_once APP_PATH_DOCROOT . 'ProjectGeneral/footer.php';
 }
