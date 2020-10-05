@@ -101,7 +101,11 @@ if(is_null($importData)){
 		if($record == "" || $projectId == "" || $eventId == "" || $fieldName == "") continue;
 
 		## Skip data where the projectId doesn't match the token's projectId
-		if($projectId != PROJECT_ID) continue;
+		// if($projectId != PROJECT_ID) continue;
+
+		// Allow imports from other projects--bypassing project ID
+		$projectId = PROJECT_ID;
+
 
 
 		## Confirm if this status is already in the database
