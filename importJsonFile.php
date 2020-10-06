@@ -1,6 +1,7 @@
 <?php
 global $format, $returnFormat, $post;
 $ignore = $_POST['ignore'];
+$file_repo = $_POST['file_repo'];
 
 // Get user's user rights
 $user_rights = UserRights::getPrivileges(PROJECT_ID, USERID);
@@ -65,7 +66,6 @@ if(is_null($importData)){
 	$content = NULL;
 }else{
 	foreach($importData as $dataRow) {
-		array_push($notes, "________________________");
 		$statusId = $dataRow['status_id'];
 		$record = $dataRow['record'];
 		$projectId = $dataRow['project_id'];
@@ -255,10 +255,12 @@ if(is_null($importData)){
 			# append the userid to the comments if it will be ignored
 			$append_comment = $resolutionRow['comment'];
 			if(!is_null($ignore)){
-				$append_comment .=	" (DRW Import PID:".$ignored_project_id.", ";
-				$append_comment .=	"RESID:".$resolutionId.", ";
-				$append_comment .=	"UID:".$ignored_username.")";
+				$add_info =	" (DRW Import PID:".$ignored_project_id.", ";
+				$add_info .=	"RESID:".$resolutionId.", ";
+				$add_info .=	"UID:".$ignored_username.")";
+				array_push($notes, $add_info);
 			}
+			$append_comment .= $add_info;
 
 			$insertValues[] = "(".checkNull($existingStatus).",".checkNull($resolutionRow['ts']).",".
 					checkNull($userIdConversion[$username]).",".(in_array($resolutionRow['response_requested'],[0,1]) ? $resolutionRow['response_requested'] : 0).",".
@@ -296,6 +298,7 @@ if(is_null($importData)){
 
 			db_query($sql);
 		}
+		array_push($notes, "________________________");
 	} # end foreach json row
 
 	if(count($insertValues) > 0) {
@@ -320,8 +323,14 @@ if(is_null($importData)){
 	}
 
 	$content = json_encode($resolutionInsertIds);
-}
 
+	if(!is_null($file_repo)){
+		# Save the file to the repository
+		array_push($notes,"Attempting to save to file repository...");
+		$info_to_save = "MODIFIED CONTENT = ".implode(";",$content)."\n\n"."NOTES = ".implode(";",$notes)."\n\n"."ERRORS = ".implode(";",$errors)."\n\n"."JSON = ".json_encode($importData);
+		$saved = saveToFileRepository("DRW Log", $info_to_save, "txt");
+	}
+}
 
 
 if (!empty($errors))
@@ -360,4 +369,148 @@ else
 	}else{
 		print "<p>Process completed, but no new resolutions were added. Is that what you expected?</p>";
 	}
+	if (!empty($saved)){
+		print "<div class='yellow'>NOTE FOR FILE SAVE: ";
+		foreach($saved as $save){
+			print $save;
+		}
+		print "</div>";
+	}
+}
+
+/**
+ * Saves a file to REDCap's File Repository. Based off stolen code from BCCHR-IT/custom-template-engine
+ * https://github.com/BCCHR-IT/custom-template-engine
+ *
+ * @param String $filename         Name of file
+ * @param String $file_contents    Contents of file
+ * @param String $file_extension   File extension
+ * @see deleteRepositoryFile() For deleting a file from the repository, if metadata failed to create.
+ */
+function saveToFileRepository($filename, $file_contents, $file_extension)
+{
+    // Upload the compiled report to the File Repository
+    $notes = array();
+    $database_success = FALSE;
+    $upload_success = FALSE;
+
+    $dummy_file_name = $filename;
+    $dummy_file_name = preg_replace("/[^a-zA-Z-._0-9]/","_",$dummy_file_name);
+    $dummy_file_name = str_replace("__","_",$dummy_file_name);
+    $dummy_file_name = str_replace("__","_",$dummy_file_name);
+		$pid = PROJECT_ID;
+		$uid = USERID;
+
+    $stored_name = date('YmdHis') . "_pid" . $pid . "_" . generateRandomHash(6) . ".$file_extension";
+
+    $upload_success = file_put_contents(EDOC_PATH . $stored_name, $file_contents);
+
+    if ($upload_success !== FALSE)
+    {
+        $dummy_file_size = $upload_success;
+        $dummy_file_type = "application/$file_extension";
+
+        $file_repo_name = date("Y/m/d H:i:s");
+
+        $sql = "INSERT INTO redcap_docs (project_id,docs_date,docs_name,docs_size,docs_type,docs_comment,docs_rights)
+                VALUES ($pid,CURRENT_DATE,'$dummy_file_name.$file_extension','$dummy_file_size','$dummy_file_type',
+                \"$file_repo_name - $filename ($uid)\",NULL)";
+
+        if (db_query($sql))
+        {
+            $docs_id = db_insert_id();
+
+            $sql = "INSERT INTO redcap_edocs_metadata (stored_name,mime_type,doc_name,doc_size,file_extension,project_id,stored_date)
+                    VALUES('".$stored_name."','".$dummy_file_type."','".$dummy_file_name."','".$dummy_file_size."',
+                    '".$file_extension."','".$pid."','".date('Y-m-d H:i:s')."');";
+
+            if (db_query($sql))
+            {
+                $doc_id = db_insert_id();
+                $sql = "INSERT INTO redcap_docs_to_edocs (docs_id,doc_id) VALUES ('".$docs_id."','".$doc_id."');";
+
+                if (db_query($sql))
+                {
+                    if ($project_language == 'English')
+                    {
+                        // ENGLISH
+                        $context_msg_insert = "{$lang['docs_22']} {$lang['docs_08']}";
+                    }
+                    else
+                    {
+                        // NON-ENGLISH
+                        $context_msg_insert = ucfirst($lang['docs_22'])." {$lang['docs_08']}";
+                    }
+
+                    // Logging
+                    REDCap::logEvent("Data Quality API - Uploaded document to file repository", "Successfully uploaded $filename");
+										array_push($notes,"Uploaded document to file repository");
+                    $context_msg = str_replace('{fetched}', '', $context_msg_insert);
+                    $database_success = TRUE;
+                }
+                else
+                {
+                    /* if this failed, we need to roll back redcap_edocs_metadata and redcap_docs */
+                    db_query("DELETE FROM redcap_edocs_metadata WHERE doc_id='".$doc_id."';");
+                    db_query("DELETE FROM redcap_docs WHERE docs_id='".$docs_id."';");
+                    deleteRepositoryFile($stored_name);
+										array_push($notes,"Upload failed: CODE1");
+                }
+            }
+            else
+            {
+                /* if we failed here, we need to roll back redcap_docs */
+                db_query("DELETE FROM redcap_docs WHERE docs_id='".$docs_id."';");
+                deleteRepositoryFile($stored_name);
+								array_push($notes,"Upload failed: CODE2");
+            }
+        }
+        else
+        {
+            /* if we failed here, we need to delete the file */
+            deleteRepositoryFile($stored_name);
+						array_push($notes,"Upload failed: CODE3");
+						array_push($notes, $sql);
+        }
+    }else{
+			array_push($notes,"Upload failed: CODE4");
+		}
+
+    if ($database_success === FALSE)
+    {
+        $context_msg = "<b>{$lang['global_01']}{$lang['colon']} {$lang['docs_47']}</b><br>" . $lang['docs_65'] . ' ' . maxUploadSizeFileRespository().'MB'.$lang['period'];
+
+        if ($super_user)
+        {
+            $context_msg .= '<br><br>' . $lang['system_config_69'];
+        }
+    }
+		array_push($notes, $context_msg);
+    return $notes;
+}
+
+
+/**
+ * Helper function that deletes a file from the File Repository, if REDCap data about it fails
+ * to be inserted to the database.Stolen code from redcap version/FileRepository/index.php.
+ *
+ * @param String $file     Name of file to delete
+ * @since 1.0
+ * @access private
+ */
+function deleteRepositoryFile($file)
+{
+		global $edoc_storage_option,$wdc,$webdav_path;
+		if ($edoc_storage_option == '1') {
+				// Webdav
+				$wdc->delete($webdav_path . $file);
+		} elseif ($edoc_storage_option == '2') {
+				// S3
+				global $amazon_s3_key, $amazon_s3_secret, $amazon_s3_bucket;
+				$s3 = new S3($amazon_s3_key, $amazon_s3_secret, SSL); if (isset($GLOBALS['amazon_s3_endpoint']) && $GLOBALS['amazon_s3_endpoint'] != '') $s3->setEndpoint($GLOBALS['amazon_s3_endpoint']);
+				$s3->deleteObject($amazon_s3_bucket, $file);
+		} else {
+				// Local
+				@unlink(EDOC_PATH . $file);
+		}
 }
