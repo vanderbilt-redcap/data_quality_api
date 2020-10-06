@@ -1,5 +1,6 @@
 <?php
 global $format, $returnFormat, $post;
+$ignore = $_POST['ignore'];
 
 // Get user's user rights
 $user_rights = UserRights::getPrivileges(PROJECT_ID, USERID);
@@ -9,6 +10,7 @@ $ur->setFormLevelPrivileges();
 
 $Proj = new Project(PROJECT_ID);
 $errors = array();
+$notes = array();
 
 // Prevent data imports for projects in inactive or archived status
 if ($Proj->project['status'] > 1) {
@@ -63,6 +65,7 @@ if(is_null($importData)){
 	$content = NULL;
 }else{
 	foreach($importData as $dataRow) {
+		array_push($notes, "________________________");
 		$statusId = $dataRow['status_id'];
 		$record = $dataRow['record'];
 		$projectId = $dataRow['project_id'];
@@ -101,12 +104,13 @@ if(is_null($importData)){
 		if($record == "" || $projectId == "" || $eventId == "" || $fieldName == "") continue;
 
 		## Skip data where the projectId doesn't match the token's projectId
-		// if($projectId != PROJECT_ID) continue;
-
-		// Allow imports from other projects--bypassing project ID
-		$projectId = PROJECT_ID;
-
-
+		if($projectId != PROJECT_ID && is_null($ignore)){
+			continue;
+		}else{
+			// Allow imports from other projects--bypassing project ID
+			$ignored_project_id = $projectId;
+			$projectId = PROJECT_ID;
+		}
 
 		## Confirm if this status is already in the database
 		$sql = "SELECT s.status_id, s.instance, s.repeat_instrument, s.record, s.project_id, s.event_id, s.field_name
@@ -120,16 +124,22 @@ if(is_null($importData)){
 						($instance == NULL ? " AND s.instance is NULL" : " AND s.instance = '".db_escape($instance)."'")).")";
 
 		$q = db_query($sql);
-
 		## Cache User ID to username conversion to reduce DB calls
 		if(!array_key_exists($assignedUsername,$userIdConversion)) {
-			$userIdConversion[$assignedUsername] = User::getUIIDByUsername($assignedUsername);
+			if(User::getUIIDByUsername($assignedUsername) || is_null($ignore)){
+				$userIdConversion[$assignedUsername] = User::getUIIDByUsername($assignedUsername);
+			}else{
+				// Ignore the user id imported and instead overwrite with current user
+				$ignored_username = $username;
+				$userIdConversion[$assignedUsername] = User::getUIIDByUsername(USERID);
+			}
 		}
 
 		$existingStatus = "";
 		while($row = db_fetch_assoc($q)) {
 			## Found a matching record/project/event/field/instance with a different status
 			if($row['status_id'] != $statusId) {
+				array_push($notes, "Found a matching record/project/event/field/instance with a different status");
 				$existingStatus = $row['status_id'];
 				$newStatusId = true;
 			}
@@ -137,6 +147,7 @@ if(is_null($importData)){
 			else if($row['record'] == $record && $row['project_id'] == $projectId
 					&& $row['event_id'] == $eventId && $row['field_name'] == $fieldName){
 				if($instance == "" || $row['instance'] == $instance) {
+					array_push($notes, "Found a row for that statusId, verify if record/project/event/field/instance matches");
 					$existingStatus = $row['status_id'];
 					$newStatusId = false;
 				}
@@ -144,13 +155,17 @@ if(is_null($importData)){
 		}
 
 		## Add new status row
-		if($existingStatus == "") {
+		if($existingStatus == "" || is_null($existingStatus)) {
+			array_push($errors,$record_esc);
 			$sql = "INSERT INTO redcap_data_quality_status
 					(non_rule,project_id,record,event_id,field_name,instance,assigned_user_id)
-					VALUES (1,".db_escape($projectId).",".db_escape($record).",".db_escape($eventId).",'".
+					VALUES (1,".db_escape($projectId).",'".db_escape($record)."',".db_escape($eventId).",'".
 					db_escape($fieldName)."',".checkNull($instance).",".checkNull($userIdConversion[$assignedUsername]).")";
-
-			db_query($sql);
+			$q = db_query($sql);
+			if($e = db_error()) {
+				array_push($errors,"sql: ".$sql);
+				array_push($errors,"Insert Status error: ".$e);
+			}
 			$existingStatus = db_insert_id();
 			$newStatusId = true;
 		}
@@ -186,10 +201,6 @@ if(is_null($importData)){
 		$lastTs = "";
 
 		foreach($dataRow['resolutions'] as $resolutionRow) {
-			if($editComments) {
-				# TODO Allow update of data resolution status/comments
-				//DataQuality::editFieldComment();
-			}
 
 			// Determine the status to set
 			if (in_array($resolutionRow['current_query_status'], array('OPEN','CLOSED','VERIFIED','DEVERIFIED'))) {
@@ -212,26 +223,46 @@ if(is_null($importData)){
 			$resolutionId = $resolutionRow['res_id'];
 			$resStatusId = $resolutionRow['status_id'];
 			$username = $resolutionRow['username'];
+			array_push($notes,"Old res_id=".$resolutionId);
 
 			## Skip resolution rows that don't have matching status IDs unless this is a new status
-			if(!$newStatusId && $resStatusId != "" && $resStatusId != $existingStatus) continue;
+			if(!$newStatusId && $resStatusId != "" && $resStatusId != $existingStatus){
+				array_push($notes, "Skip resolution rows that don't have matching status IDs unless this is a new status");
+				continue;
+			}
 
 			## Cache User ID to username conversion to reduce DB calls
 			if(!array_key_exists($username,$userIdConversion)) {
-				$userIdConversion[$username] = User::getUIIDByUsername($username);
+				if(User::getUIIDByUsername($assignedUsername) || is_null($ignore)){
+					$userIdConversion[$assignedUsername] = User::getUIIDByUsername($assignedUsername);
+				}else{
+					// Ignore the user id imported and instead overwrite with current user
+					$ignored_username = $username;
+					$userIdConversion[$assignedUsername] = User::getUIIDByUsername(USERID);
+				}
 			}
 
 			## Skip resolution rows that already have a resolution from the same user for the same timestamp
 			## This is to prevent duplicate response rows
+			# TODO: if ignoring PID, perhaps should only focus on ts and record id (not userid)
 			if(array_key_exists($resolutionRow['ts'].$userIdConversion[$username],$existingResolutions)) {
+				array_push($notes,"Skip resolution rows that already have a resolution from the same user for the same timestamp");
 				continue;
 			}
 
 			$lastTs = $resolutionRow['ts'];
 
+			# append the userid to the comments if it will be ignored
+			$append_comment = $resolutionRow['comment'];
+			if(!is_null($ignore)){
+				$append_comment .=	" (DRW Import PID:".$ignored_project_id.", ";
+				$append_comment .=	"RESID:".$resolutionId.", ";
+				$append_comment .=	"UID:".$ignored_username.")";
+			}
+
 			$insertValues[] = "(".checkNull($existingStatus).",".checkNull($resolutionRow['ts']).",".
 					checkNull($userIdConversion[$username]).",".(in_array($resolutionRow['response_requested'],[0,1]) ? $resolutionRow['response_requested'] : 0).",".
-					checkNull($response).",".checkNull($resolutionRow['comment']).",".
+					checkNull($response).",".checkNull($append_comment).",".
 					checkNull($resStatus).")";
 
 			$existingResolutions[$resolutionRow['ts'].$userIdConversion[$username]] = 1;
@@ -264,7 +295,7 @@ if(is_null($importData)){
 
 			db_query($sql);
 		}
-	}
+	} # end foreach json row
 
 	if(count($insertValues) > 0) {
 		## Do last inserts pending in $insertValues
@@ -275,6 +306,7 @@ if(is_null($importData)){
 
 		if($e = db_error()) {
 			error_log("Data Quality Import: ".$e);
+			array_push($errors,$e);
 		}
 		else {
 			$nextId = db_insert_id();
@@ -285,14 +317,10 @@ if(is_null($importData)){
 		$insertValues = [];
 	}
 
-	## TODO Send other types of responses based on request
 	$content = json_encode($resolutionInsertIds);
 }
 
 
-
-# Send the response to the requestor
-// RestUtility::sendResponse(200, $content, $format);
 
 if (!empty($errors))
 {
@@ -303,33 +331,31 @@ if (!empty($errors))
 		print "<p>$error</p>";
 	}
 	print "</div>";
+	print "<div class='green' style='margin:20px 0;'>";
+	print "<p>RES IDS MODIFIED:$content</p>";
+	foreach($notes as $note)
+	{
+		print "<p>";
+		print_r($note);
+		print "</p>";
+	}
+	print "</div>";
 	require_once APP_PATH_DOCROOT . 'ProjectGeneral/footer.php';
 }
 else
 {
-	// $dataQualityExternalModule = new \Vanderbilt\DataQualityExternalModule\DataQualityExternalModule();
-	// $errors = $dataQualityExternalModule->import_json_file();
-	// header("Location: " . $dataQualityExternalModule->getUrl("index.php") . "&imported=1");
 	require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
 	print "<div class='green' style='margin:20px 0;'>";
-	print "<p>RES IDS MODIFIED:$content</p>";
-	print "</div>";
-	require_once APP_PATH_DOCROOT . 'ProjectGeneral/footer.php';
-}
-
-function csv($data,$headers) {
-	foreach($data as $dataRow) {
-		foreach($headers as $column => $label) {
-			if($label == "record") {
-				## If record is blank, this must be a data resolution row
-				if($dataRow[$column] == "") {
-
-				}
-				## Else, this must be a status row
-				else {
-
-				}
-			}
+	print "<p>UPLOAD COMPLETE: NO NEW RES IDS</p>";
+	if(strlen($content) >2){
+		print "<p>SUCCESS! RES IDS MODIFIED:$content</p>";
+		foreach($notes as $note)
+		{
+			print "<p>";
+			print_r($note);
+			print "</p>";
 		}
+		print "</div>";
+		require_once APP_PATH_DOCROOT . 'ProjectGeneral/footer.php';
 	}
 }

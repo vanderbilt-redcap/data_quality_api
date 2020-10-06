@@ -25,9 +25,9 @@ global $module;
       <div class="green">Imported</div>
       <br/>
   <?php endif; ?>
-  Note PID will be ignored on import, so it is possible to import DRW data from other projects...
   <form enctype="multipart/form-data" method="post" action="<?php echo $module->getProcessJsonUpURL(); ?>" enctype="multipart/form-data" style="border: 1px solid black; padding: 10px">
     <input name="pid" type="hidden" value="<?php echo $_GET['pid'];?>"/>
+    <input id="ignore" name="ignore" type="checkbox"/><label for="ignore">&nbsp;Ignore PID and Usernames?</label><BR/><BR/>
     <p>Select CSV to upload:</p>
     <input type="file" name="import_file">
     <input class="btn btn-primary" type="submit" value="upload">
