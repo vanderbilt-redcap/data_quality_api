@@ -97,6 +97,7 @@ if(is_null($importData)){
 		}
 
 		if(!$eventFound) {
+			array_push($notes, "Event not found.");
 			continue;
 		}
 
@@ -107,7 +108,7 @@ if(is_null($importData)){
 		if($projectId != PROJECT_ID && is_null($ignore)){
 			continue;
 		}else{
-			// Allow imports from other projects--bypassing project ID
+			## Allow imports from other projects--bypassing project ID
 			$ignored_project_id = $projectId;
 			$projectId = PROJECT_ID;
 		}
@@ -144,10 +145,10 @@ if(is_null($importData)){
 				$newStatusId = true;
 			}
 			## Found a row for that statusId, verify if record/project/event/field/instance matches
-			else if($row['record'] == $record && $row['project_id'] == $projectId
+			else if($row['record'] == $record && ($row['project_id'] == $projectId || !is_null($ignore))
 					&& $row['event_id'] == $eventId && $row['field_name'] == $fieldName){
 				if($instance == "" || $row['instance'] == $instance) {
-					array_push($notes, "Found a row for that statusId, verify if record/project/event/field/instance matches");
+					array_push($notes, "Found a row for this statusId, verified that record/project/event/field/instance matches");
 					$existingStatus = $row['status_id'];
 					$newStatusId = false;
 				}
@@ -223,7 +224,7 @@ if(is_null($importData)){
 			$resolutionId = $resolutionRow['res_id'];
 			$resStatusId = $resolutionRow['status_id'];
 			$username = $resolutionRow['username'];
-			array_push($notes,"Old res_id=".$resolutionId);
+			array_push($notes,"Old res_id=".$resolutionId."; res_status_id=".$resStatusId);
 
 			## Skip resolution rows that don't have matching status IDs unless this is a new status
 			if(!$newStatusId && $resStatusId != "" && $resStatusId != $existingStatus){
@@ -244,9 +245,8 @@ if(is_null($importData)){
 
 			## Skip resolution rows that already have a resolution from the same user for the same timestamp
 			## This is to prevent duplicate response rows
-			# TODO: if ignoring PID, perhaps should only focus on ts and record id (not userid)
 			if(array_key_exists($resolutionRow['ts'].$userIdConversion[$username],$existingResolutions)) {
-				array_push($notes,"Skip resolution rows that already have a resolution from the same user for the same timestamp");
+				array_push($notes,"Skipping resolution row--already has a resolution from the same user for the same timestamp");
 				continue;
 			}
 
@@ -269,6 +269,7 @@ if(is_null($importData)){
 
 			## Do inserts in groups of 10 to reduce DB calls
 			if(count($insertValues) >= 10) {
+				array_push($notes, "Inserting resolutions in batches of 10.");
 				$sql = "INSERT INTO redcap_data_quality_resolutions
 						(status_id,ts,user_id,response_requested,response,comment,current_query_status)
 						VALUES ".implode(",",$insertValues);
@@ -299,6 +300,7 @@ if(is_null($importData)){
 
 	if(count($insertValues) > 0) {
 		## Do last inserts pending in $insertValues
+		array_push($notes, "Inserting final set of resolutions.");
 		$sql = "INSERT INTO redcap_data_quality_resolutions
 				(status_id,ts,user_id,response_requested,response,comment,current_query_status)
 				VALUES ".implode(",",$insertValues);
@@ -326,15 +328,14 @@ if (!empty($errors))
 {
 	require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
 	print "<div class='red' style='margin:20px 0;'>";
-	foreach($errors as $error)
-	{
+	foreach($errors as $error){
 		print "<p>$error</p>";
 	}
 	print "</div>";
 	print "<div class='green' style='margin:20px 0;'>";
 	print "<p>RES IDS MODIFIED:$content</p>";
-	foreach($notes as $note)
-	{
+	print "<p>-------------LOG:-------------</p>";
+	foreach($notes as $note){
 		print "<p>";
 		print_r($note);
 		print "</p>";
@@ -346,16 +347,17 @@ else
 {
 	require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
 	print "<div class='green' style='margin:20px 0;'>";
-	print "<p>UPLOAD COMPLETE: NO NEW RES IDS</p>";
 	if(strlen($content) >2){
 		print "<p>SUCCESS! RES IDS MODIFIED:$content</p>";
-		foreach($notes as $note)
-		{
+		print "<p>-------------LOG:-------------</p>";
+		foreach($notes as $note){
 			print "<p>";
 			print_r($note);
 			print "</p>";
 		}
 		print "</div>";
 		require_once APP_PATH_DOCROOT . 'ProjectGeneral/footer.php';
+	}else{
+		print "<p>Process completed, but no new resolutions were added. Is that what you expected?</p>";
 	}
 }
