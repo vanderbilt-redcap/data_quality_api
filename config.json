@@ -12,12 +12,23 @@
 			"institution": "Vanderbilt University Medical Center"
         }
     ],
-	
+
 	"permissions": [
 	],
 
 	"no-auth-pages":["import","export"],
 
 	"project-settings": [
-	]
+	],
+
+	"links": {
+		"project": [
+			{
+				"name": "Export/Import DRW JSON",
+				"icon": "arrow_circle_double_135",
+				"url": "index.php",
+				"show-header-and-footer": true
+			}
+		]
+	}
 }

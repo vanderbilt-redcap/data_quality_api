@@ -15,4 +15,12 @@ class DataQualityExternalModule extends AbstractExternalModule
 
 		$post = $data->getRequestVars();
 	}
+
+	public function getProcessJsonDownURL() {
+			return $this->getUrl("exportJsonFile.php", false, false);
+	}
+
+	public function getProcessJsonUpURL() {
+			return $this->getUrl("importJsonFile.php", false, false);
+	}
 }
