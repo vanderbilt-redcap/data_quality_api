@@ -136,7 +136,7 @@ foreach($importData as $dataRow) {
 	## Need to verify project ID and event ID are integers
 	if($existingStatus == ""
 		&& (is_int($projectId) || ctype_digit($projectId))
-		&& (is_int($eventId) || ctype_digit($eventId)) {
+		&& (is_int($eventId) || ctype_digit($eventId))) {
 		$sql = "INSERT INTO redcap_data_quality_status
 				(non_rule,project_id,record,event_id,field_name,instance,assigned_user_id)
 				VALUES (1,".db_escape($projectId).",'".db_escape($record)."',".db_escape($eventId).",'".
