@@ -24,7 +24,7 @@
 	"links": {
 		"project": [
 			{
-				"name": "Export/Import DRW JSON",
+				"name": "Data Quality API",
 				"icon": "arrow_circle_double_135",
 				"url": "index.php",
 				"show-header-and-footer": true

@@ -92,3 +92,8 @@ The data quality import only allows the import of new resolutions. A new status 
 Input for data quality import is identical to the data quality export's output. Duplicate resolutions will not be imported (those with the same ts and username as existing resolutions).
 
 Output for data quality import is a json array of [res_ids].
+
+## Syncing Data Resolutions between projects
+When importing data resolutions using the index.php plugin, you will have the option to "Ignore PID and Usernames?"
+
+This option should be used only in situations where you are syncing resolutions between projects that have the same data dictionaries and data, but differing users and PIDs.

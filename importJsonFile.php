@@ -328,7 +328,7 @@ if(is_null($importData)){
 		# Save the file to the repository
 		array_push($notes,"Attempting to save to file repository...");
 		$info_to_save = "MODIFIED CONTENT = ".implode(";",$content)."\n\n"."NOTES = ".implode(";",$notes)."\n\n"."ERRORS = ".implode(";",$errors)."\n\n"."JSON = ".json_encode($importData);
-		$saved = saveToFileRepository("DRW Log", $info_to_save, "txt");
+		$saved = saveToFileRepository("Data Quality API Log", $info_to_save, "txt");
 	}
 }
 
@@ -370,7 +370,7 @@ else
 		print "<p>Process completed, but no new resolutions were added. Is that what you expected?</p>";
 	}
 	if (!empty($saved)){
-		print "<div class='yellow'>NOTE FOR FILE SAVE: ";
+		print "<div class='yellow'>NOTE: ";
 		foreach($saved as $save){
 			print $save;
 		}
