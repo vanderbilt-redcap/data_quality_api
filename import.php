@@ -3,6 +3,11 @@ global $format, $returnFormat, $post;
 
 $module->checkApiToken();
 
+## Trying to run module using wrong pid, could allow access of module on non-enabled projects
+if($post["projectid"] != $_POST['pid']) {
+	die();
+}
+
 // Get user's user rights
 $user_rights = UserRights::getPrivileges(PROJECT_ID, USERID);
 $user_rights = $user_rights[PROJECT_ID][strtolower(USERID)];
