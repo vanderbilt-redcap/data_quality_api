@@ -1,4 +1,6 @@
 <?php
+$modulePid = $project_id;
+
 $module->checkApiToken();
 
 global $post;
@@ -6,11 +8,9 @@ global $post;
 $project_id = db_escape($post['projectid']);
 
 ## Trying to run module using wrong pid, could allow access of module on non-enabled projects
-if($post["projectid"] != $_POST['pid']) {
+if($post["projectid"] != $modulePid || $project_id == "") {
 	die();
 }
-
-if($project_id == "") die();
 
 # Add SQL to filter results by a single record
 $recordSql = "";
