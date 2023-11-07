@@ -48,6 +48,7 @@ if($post['status'] != "") {
 }
 
 ## Get list of status IDs associated with this project/record(s)
+$table = $module->getDataTable($project_id);
 $sql1 = "
 	SELECT s.*, g.value as group_id
 	FROM redcap_data_quality_status s
@@ -58,7 +59,7 @@ $sql1 = "
 		AND s.field_name = m.field_name
 			
 	-- this joins one row per event & instance, requiring the GROUP BY below
-	LEFT JOIN redcap_data g
+	LEFT JOIN $table g
 		ON s.record = g.record
 		AND g.project_id = $project_id
 		AND g.field_name = '__GROUPID__'
