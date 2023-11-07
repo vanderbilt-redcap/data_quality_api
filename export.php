@@ -48,7 +48,7 @@ if($post['status'] != "") {
 }
 
 ## Get list of status IDs associated with this project/record(s)
-$table = $module->getDataTable();
+$table = $module->getDataTable($project_id);
 $sql1 = "
 	SELECT s.*, g.value as group_id
 	FROM redcap_data_quality_status s
