@@ -15,4 +15,8 @@ class DataQualityExternalModule extends AbstractExternalModule
 
 		$post = $data->getRequestVars();
 	}
+
+	function getDataTable(){
+		return method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($project_id) : "redcap_data"; 
+	}
 }
