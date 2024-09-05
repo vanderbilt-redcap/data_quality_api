@@ -1,4 +1,7 @@
 <?php
+
+namespace Vanderbilt\DataQualityExternalModule;
+
 $modulePid = $project_id;
 
 global $format, $returnFormat, $post;
