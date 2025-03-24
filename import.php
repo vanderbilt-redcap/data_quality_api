@@ -5,6 +5,7 @@ namespace Vanderbilt\DataQualityExternalModule;
 use \UserRights;
 use \Project;
 use \RestUtility;
+use \User;
 
 $modulePid = $project_id;
 
