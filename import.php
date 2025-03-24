@@ -2,6 +2,10 @@
 
 namespace Vanderbilt\DataQualityExternalModule;
 
+use \UserRights;
+use \Project;
+use \RestUtility;
+
 $modulePid = $project_id;
 
 global $format, $returnFormat, $post;
