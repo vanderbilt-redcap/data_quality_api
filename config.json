@@ -2,6 +2,7 @@
 	"name": "Data Quality API",
 
 	"namespace": "Vanderbilt\\DataQualityExternalModule",
+	"framework-version": 15,
 
 	"description": "Adds Data Quality API endpoints.  <b>Disclaimer:</b> This module only supports API import/export through JSON format and only supports limited access to Data Quality functionality. See the README for instructions on usage of the API functionality enabled by this module.",
 
@@ -17,6 +18,7 @@
 	],
 
 	"no-auth-pages":["import","export"],
+	"no-csrf-pages":["import","export"],
 
 	"project-settings": [
 	]

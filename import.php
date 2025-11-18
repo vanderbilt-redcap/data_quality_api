@@ -14,12 +14,13 @@ if($post["projectid"] != $modulePid || $post["projectid"] == "") {
 }
 
 // Get user's user rights
-$user_rights = UserRights::getPrivileges(PROJECT_ID, USERID);
+// $user_rights = \UserRights::getPrivileges(PROJECT_ID, USERID);
+$user_rights = $module->getProject()->getRights(USERID);
 $user_rights = $user_rights[PROJECT_ID][strtolower(USERID)];
-$ur = new UserRights();
-$ur->setFormLevelPrivileges();
+// $ur = new \UserRights();
+// $ur->setFormLevelPrivileges();
 
-$Proj = new Project(PROJECT_ID);
+$Proj = new \Project(PROJECT_ID);
 
 // Prevent data imports for projects in inactive or archived status
 if ($Proj->project['status'] > 1) {
@@ -30,7 +31,7 @@ if ($Proj->project['status'] > 1) {
 	} else {
 		$statusLabel = "[unknown]";
 	}
-	die(RestUtility::sendResponse(403, "Data may not be imported because the project is in $statusLabel status."));
+	die(\RestUtility::sendResponse(403, "Data may not be imported because the project is in $statusLabel status."));
 }
 
 $insertValues = [];
@@ -50,7 +51,7 @@ else if($projectSettings['data_resolution_enabled'] == 1) {
 	$dataCommentProcess = true;
 }
 else {
-	die(RestUtility::sendResponse(403, "Data may not be imported because the project does not have data quality enabled."));
+	die(\RestUtility::sendResponse(403, "Data may not be imported because the project does not have data quality enabled."));
 }
 
 if($projectSettings['field_comment_edit_delete'] == 1) {
@@ -122,7 +123,7 @@ foreach($importData as $dataRow) {
 
 	## Cache User ID to username conversion to reduce DB calls
 	if(!array_key_exists($assignedUsername,$userIdConversion)) {
-		$userIdConversion[$assignedUsername] = User::getUIIDByUsername($assignedUsername);
+		$userIdConversion[$assignedUsername] = \User::getUIIDByUsername($assignedUsername);
 	}
 
 	$existingStatus = "";
@@ -220,7 +221,7 @@ foreach($importData as $dataRow) {
 
 		## Cache User ID to username conversion to reduce DB calls
 		if(!array_key_exists($username,$userIdConversion)) {
-			$userIdConversion[$username] = User::getUIIDByUsername($username);
+			$userIdConversion[$username] = \User::getUIIDByUsername($username);
 		}
 
 		## Skip resolution rows that already have a resolution from the same user for the same timestamp
@@ -291,7 +292,7 @@ if(count($insertValues) > 0) {
 $content = json_encode($resolutionInsertIds);
 
 # Send the response to the requestor
-RestUtility::sendResponse(200, $content, $format);
+\RestUtility::sendResponse(200, $content, $format);
 
 function csv($data,$headers) {
 	foreach($data as $dataRow) {
