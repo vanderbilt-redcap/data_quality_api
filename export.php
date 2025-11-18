@@ -1,4 +1,6 @@
 <?php
+namespace Vanderbilt\DataQualityExternalModule;
+
 $modulePid = $project_id;
 
 $module->checkApiToken();
@@ -31,7 +33,7 @@ if($post['record'] != "") {
 # Add SQL to filter results by a single user
 $userSql = "";
 if($post['user'] != "") {
-	$user_id = User::getUIIDByUsername($post['user']);
+	$user_id = \User::getUIIDByUsername($post['user']);
 	if(!empty($user_id) && is_numeric($user_id)) {
 		$userSql = " AND s.assigned_user_id = '" . db_escape($user_id) . "'";
 	}
@@ -84,7 +86,7 @@ while($row = db_fetch_assoc($q)) {
 
 	## Cache User ID to username conversion to reduce DB calls
 	if(!array_key_exists($userId,$userIdConversion)) {
-		$userIdConversion[$userId] = User::getUserInfoByUiid($userId)['username'];
+		$userIdConversion[$userId] = \User::getUserInfoByUiid($userId)['username'];
 	}
 	$row['assigned_username'] = $userIdConversion[$userId];
 	$statusList[$row['status_id']] = $row;
@@ -98,7 +100,7 @@ if(count($statusList) > 0) {
 	$q = db_query($sql);
 
 	if($e = db_error()) {
-		throw new Exception("Database error while pulling data quality resolutions");
+		throw new \Exception("Database error while pulling data quality resolutions");
 	}
 
 	while($row = db_fetch_assoc($q)) {
@@ -110,7 +112,7 @@ if(count($statusList) > 0) {
 
 		## Cache User ID to username conversion to reduce DB calls
 		if(!array_key_exists($userId,$userIdConversion)) {
-			$userIdConversion[$userId] = User::getUserInfoByUiid($userId)['username'];
+			$userIdConversion[$userId] = \User::getUserInfoByUiid($userId)['username'];
 		}
 		$row['username'] = $userIdConversion[$userId];
 		$statusList[$row['status_id']]["resolutions"][$row["res_id"]] = $row;
@@ -129,4 +131,4 @@ if(count($statusList) > 0) {
 $content = json_encode($statusList);
 
 # Send the response to the requestor
-RestUtility::sendResponse(200, $content, $format);
+\RestUtility::sendResponse(200, $content, $format);
